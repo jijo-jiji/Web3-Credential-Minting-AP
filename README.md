@@ -1,126 +1,140 @@
-# Web3 Credential Minting & Google Sheets Synchronizer
+Web3 Immutable Data Anchoring & Verification API
 
-This project is a decentralized application (dApp) backend built with Django REST Framework and Web3.py. It automates the process of verifying and anchoring academic credentials (e.g., student graduation records) onto the **Ethereum Sepolia Testnet** and synchronizes status updates back to a **Google Sheet**.
+This project is a decentralized application (dApp) backend built with Django REST Framework and Web3.py. It automates the process of verifying and anchoring high-value digital records (e.g., academic credentials, employment contracts, software licenses, or compliance certificates) onto the Ethereum Sepolia Testnet and synchronizes status updates back to a Google Sheet.
 
----
+🎯 The Business Case: Universal Data Privacy & Compliance
 
-## System Architecture
+Storing personal identifiable information (PII) like employee salaries, medical records, or student details directly on a public blockchain violently violates privacy frameworks like the PDPA and GDPR.
 
-```mermaid
+This architecture solves that by acting as a universal cryptographic bridge. It takes plain-text data from a Web2 source (e.g., Google Sheets, ERPs, or legacy databases), runs it through a SHA-256 one-way hashing algorithm, and only anchors the resulting 64-character digital fingerprint to the blockchain. Third parties can verify data mathematically without ever exposing the raw records on a public ledger.
+
+🏗️ System Architecture
+
 graph TD
-    A[Google Sheet] <-->|Read/Write via gspread| B(Sync Script: sync_sheet.py)
-    B -->|POST Graduate Info| C[Django Backend]
-    C -->|Hash Data & Send Txn| D[Alchemy RPC Endpoint]
+    A[Web2 Database / Google Sheet] <-->|Read/Write via API| B(Sync Engine: sync_sheet.py)
+    B -->|POST Record Info| C[Django Backend]
+    C -->|Hash Data & Send Txn| D[Alchemy RPC Node]
     D -->|Anchor Hash| E[Sepolia Smart Contract]
     C -->|Return Txn Hash| B
-```
 
-1. **Google Sheets**: Serves as the database of graduates. The synchronizer script reads new entries and writes back transaction hashes once they are successfully anchored on-chain.
-2. **Django Backend**: Generates a SHA-256 hash of the graduate's information, formats it for Solidity (`bytes32`), and signs/sends a transaction to anchor it.
-3. **Sepolia Smart Contract**: Store valid hashes immutably on the Ethereum blockchain for decentralized verification.
 
----
+Web2 Database (Google Sheets Demo): Serves as the administrative dashboard. The synchronizer script reads new entries and writes back transaction hashes once they are successfully anchored on-chain.
 
-## Features
+Django Backend: Generates a SHA-256 hash of the target information, formats it for Solidity (bytes32), and signs/sends a transaction to anchor it.
 
-- **Google Sheets Integration**: Automatically processes rows that do not have a `Transaction Hash` and writes the hash back to the sheet once confirmed.
-- **On-Chain Anchoring**: Hashes the student's unique details (`Name-Course-Graduation Date`) and stores them using a smart contract on Ethereum Sepolia.
-- **Decentralized Verification**: Instant check against the smart contract state via a public API endpoint.
+Sepolia Smart Contract: Stores valid hashes immutably on the Ethereum blockchain for decentralized verification. Contains logic to prevent duplicate record entries to save gas.
 
----
+🚀 Setup & Installation
 
-## Setup & Installation
+1. Prerequisites
 
-### 1. Prerequisites
-- Python 3.10+
-- A Google Cloud Platform (GCP) project with the **Google Sheets** and **Google Drive** APIs enabled.
-- An Alchemy (or other provider) API Key for Ethereum Sepolia.
-- A Sepolia wallet with a small amount of test ETH.
+Python 3.10+
 
-### 2. Install Dependencies
+A Google Cloud Platform (GCP) project with the Google Sheets and Google Drive APIs enabled.
+
+An Alchemy (or Infura) API Key for Ethereum Sepolia.
+
+A Sepolia wallet with test ETH.
+
+2. Install Dependencies
+
 Clone the repository and set up a virtual environment:
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-*(Make sure `web3`, `gspread`, `django`, `djangorestframework`, and `requests` are installed).*
 
-### 3. Environment Configuration (`.env`)
-Create a `.env` file in the root directory:
-```env
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+pip install -r requirements.txt
+
+
+3. Environment Configuration (.env)
+
+Create a .env file in the root directory:
+
 # Web3 Configuration
-ALCHEMY_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY"
+ALCHEMY_RPC_URL="[https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY](https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY)"
 WALLET_PRIVATE_KEY="YOUR_WALLET_PRIVATE_KEY"
 CONTRACT_ADDRESS="YOUR_SMART_CONTRACT_ADDRESS"
 
 # Django Configuration
 DJANGO_SECRET_KEY="your-secret-key"
 DEBUG=True
-```
 
-### 4. Google Credentials
-Place your Google Service Account credential JSON file in the root directory and name it `google_credentials.json`. 
 
-Ensure that:
-1. The **Google Sheets API** is enabled in the Google Developer Console.
-2. The target Google Sheet is shared with the `client_email` specified in your `google_credentials.json` (grant **Editor** permissions).
+4. Smart Contract ABI & Google Credentials
 
----
+For security and code cleanliness, sensitive files and massive JSON arrays are kept out of the main logic:
 
-## API Endpoints
+google_credentials.json: Place your GCP Service Account credential JSON file in the root directory. Ensure the target Google Sheet is shared with the client_email specified in this file (Editor permissions).
 
-### 1. Issue & Anchor Credential
-Hashes the credential data and anchors it on the blockchain.
+abi.json: Create this file in your credential_api folder and paste the compiled Application Binary Interface (ABI) of your Solidity smart contract so Web3.py can interact with it.
 
-* **URL**: `/api/v1/issue/`
-* **Method**: `POST`
-* **Payload**:
-  ```json
-  {
-    "name": "Azizi",
-    "course": "Blockchain Engineering",
-    "graduation_date": "2026-06-18"
-  }
-  ```
-* **Success Response (201 Created)**:
-  ```json
-  {
-    "status": "success",
-    "message": "Credential successfully anchored to blockchain.",
-    "student": "Azizi",
-    "document_hash": "9b8a333b8fd3f6e34ecca01aeaa974ea03888d3a826bcae968429a3af9fdadd3",
-    "transaction_hash": "0x...",
-    "explorer_url": "https://sepolia.etherscan.io/tx/0x..."
-  }
-  ```
+📡 API Endpoints
 
-### 2. Verify Credential
-Queries the smart contract directly to verify if the given SHA-256 hash was officially issued.
+1. Issue & Anchor Record
 
-* **URL**: `/api/v1/verify/<document_hash>/`
-* **Method**: `GET`
-* **Success Response (200 OK)**:
-  ```json
-  {
-    "status": "success",
-    "message": "Credential is valid.",
-    "document_hash": "9b8a333b8fd3f6e34ecca01aeaa974ea03888d3a826bcae968429a3af9fdadd3",
-    "anchored_timestamp": 1718719875
-  }
-  ```
+Hashes the payload data, signs it with the server wallet, and anchors it on the blockchain. (Note: This demo is currently configured for an Academic Credential schema, but the underlying engine accepts any JSON structure).
 
----
+URL: /api/v1/issue/
 
-## Usage
+Method: POST
 
-### Step 1: Start the Django Backend Server
-```bash
+Payload:
+
+{
+  "name": "Azizi",
+  "course": "Software Engineering",
+  "graduation_date": "2026-10-01"
+}
+
+
+Success Response (201 Created):
+
+{
+  "status": "success",
+  "message": "Record successfully anchored to blockchain.",
+  "document_hash": "dfba51eec2cbf7eafec61e535081287c022edf7ec353abd738efbe5b805b31a1",
+  "transaction_hash": "0x07c118db7ad5...",
+  "explorer_url": "[https://sepolia.etherscan.io/tx/0x07c118db7ad5](https://sepolia.etherscan.io/tx/0x07c118db7ad5)..."
+}
+
+
+2. Verify Record
+
+Queries the smart contract directly to verify if the given SHA-256 hash was officially issued. This is a read-only call (0 gas).
+
+URL: /api/v1/verify/<document_hash>/
+
+Method: GET
+
+Success Response (200 OK):
+
+{
+  "status": "success",
+  "message": "Record is valid and mathematically verified.",
+  "document_hash": "dfba51eec2cbf7eafec61e535081287c022edf7ec353abd738efbe5b805b31a1",
+  "anchored_timestamp": 1718686080
+}
+
+
+⚙️ Usage (Demo Flow)
+
+Step 1: Start the Django Backend Server
+
 python manage.py runserver
-```
 
-### Step 2: Run the Google Sheets Sync Script
-To scan the spreadsheet for new graduates, anchor them, and save the transaction hashes back to Google Sheets, run:
-```bash
+
+Step 2: Run the Web2-to-Web3 Sync Script
+
+To scan the spreadsheet for new un-anchored records, process them, and save the transaction hashes back to Google Sheets, run:
+
 python sync_sheet.py
-```
+
+
+🛣️ Production Roadmap (Future Scope)
+
+While this prototype uses a manual trigger for the synchronization script, a production-grade deployment for enterprise clients would implement:
+
+Event-Driven Webhooks: Replacing the polling script with direct Webhook triggers from CRMs, ERPs, or Google Apps Script.
+
+Asynchronous Task Queues: Using Celery/Redis to handle Web3 transactions in the background to prevent API blocking during Ethereum network congestion.
+
+Key Management Systems (KMS): Migrating the .env private key to AWS KMS or HashiCorp Vault for enterprise-grade cryptographic security.
