@@ -2,7 +2,7 @@
 
 This project is a decentralized application (dApp) backend built with Django REST Framework and Web3.py. It automates the process of verifying and anchoring high-value digital records (e.g., academic credentials, employment contracts, software licenses, or compliance certificates) onto the Ethereum Sepolia Testnet and synchronizes status updates back to a Google Sheet.
 
----
+🎯 The Business Case: Universal Data Privacy & Compliance
 
 ## 🎯 The Business Case: Universal Data Privacy & Compliance
 
@@ -14,20 +14,18 @@ This architecture solves that by acting as a universal cryptographic bridge. It 
 
 ## 🏗️ System Architecture
 
-```mermaid
 graph TD
     A[Web2 Database / Google Sheet] <-->|Read/Write via API| B(Sync Engine: sync_sheet.py)
     B -->|POST Record Info| C[Django Backend]
     C -->|Hash Data & Send Txn| D[Alchemy RPC Node]
     D -->|Anchor Hash| E[Sepolia Smart Contract]
     C -->|Return Txn Hash| B
-```
 
 - **Web2 Database (Google Sheets Demo)**: Serves as the administrative dashboard. The synchronizer script reads new entries and writes back transaction hashes once they are successfully anchored on-chain.
 - **Django Backend**: Generates a SHA-256 hash of the target information, formats it for Solidity (`bytes32`), and signs/sends a transaction to anchor it.
 - **Sepolia Smart Contract**: Stores valid hashes immutably on the Ethereum blockchain for decentralized verification. Contains logic to prevent duplicate record entries to save gas.
 
----
+Web2 Database (Google Sheets Demo): Serves as the administrative dashboard. The synchronizer script reads new entries and writes back transaction hashes once they are successfully anchored on-chain.
 
 ## 🚀 Setup & Installation
 
@@ -37,7 +35,6 @@ graph TD
 - An **Alchemy** (or Infura) API Key for Ethereum Sepolia.
 - A **Sepolia wallet** with test ETH.
 
-### 2. Install Dependencies
 Clone the repository and set up a virtual environment:
 ```bash
 python -m venv venv
@@ -45,25 +42,30 @@ source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration (`.env`)
-Create a `.env` file in the root directory:
-```env
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+pip install -r requirements.txt
+
+
+3. Environment Configuration (.env)
+
+Create a .env file in the root directory:
+
 # Web3 Configuration
-ALCHEMY_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY"
+ALCHEMY_RPC_URL="[https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY](https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY)"
 WALLET_PRIVATE_KEY="YOUR_WALLET_PRIVATE_KEY"
 CONTRACT_ADDRESS="YOUR_SMART_CONTRACT_ADDRESS"
 
 # Django Configuration
 DJANGO_SECRET_KEY="your-secret-key"
 DEBUG=True
-```
 
 ### 4. Smart Contract ABI & Google Credentials
 For security and code cleanliness, sensitive files and massive JSON arrays are kept out of the main logic:
 - **`google_credentials.json`**: Place your GCP Service Account credential JSON file in the root directory. Ensure the target Google Sheet is shared with the `client_email` specified in this file (Editor permissions).
 - **`abi.json`**: Create this file in your `credential_api` folder and paste the compiled Application Binary Interface (ABI) of your Solidity smart contract so Web3.py can interact with it.
 
----
+For security and code cleanliness, sensitive files and massive JSON arrays are kept out of the main logic:
 
 ## 📡 API Endpoints
 
@@ -106,14 +108,11 @@ Queries the smart contract directly to verify if the given SHA-256 hash was offi
   }
   ```
 
----
+URL: /api/v1/issue/
 
 ## ⚙️ Usage (Demo Flow)
 
-### Step 1: Start the Django Backend Server
-```bash
 python manage.py runserver
-```
 
 ### Step 2: Run the Web2-to-Web3 Sync Script
 To scan the spreadsheet for new un-anchored records, process them, and save the transaction hashes back to Google Sheets, run:
