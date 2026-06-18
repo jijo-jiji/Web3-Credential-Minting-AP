@@ -1,0 +1,28 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Credentials & secrets
+.env
+.env.*
+google_credentials.json
+
+# Databases
+*.sqlite3
+
+# Django-specific logs/cache
+*.log
+local_settings.py
+
+# System/IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
