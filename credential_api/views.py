@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from web3 import Web3
 from django.conf import settings
+from functools import wraps
 
 # 1. Initialize Web3 Connection
 w3 = Web3(Web3.HTTPProvider(os.getenv("ALCHEMY_RPC_URL")))
@@ -43,7 +44,24 @@ def get_contract_and_account():
     return contract, account_address
 
 
+def require_api_key(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        api_key = request.headers.get("X-API-KEY")
+        expected_key = os.getenv("MINT_API_KEY")
+        
+        if not expected_key:
+            return Response({"error": "Server configuration error: MINT_API_KEY missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        if not api_key or api_key != expected_key:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+
 @api_view(['POST'])
+@require_api_key
 def issue_credential(request):
     """
     Takes student data (eventually from Google Sheets), hashes it, 

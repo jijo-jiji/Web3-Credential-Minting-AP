@@ -2,10 +2,15 @@ import gspread
 from google.oauth2.service_account import Credentials
 import requests
 import time
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # 1. Configuration
 SPREADSHEET_ID = '1QsE3Y4HyCgcnT3Boi-YfZ857bN9tNZkMWLQ9OjdJlqk'
-API_URL = 'http://127.0.0.1:8000/api/v1/issue/'
+API_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000/api/v1/issue/")
+MINT_API_KEY = os.getenv("MINT_API_KEY")
 
 # 2. Authenticate with Google
 scopes = ['https://www.googleapis.com/auth/spreadsheets']
@@ -41,16 +46,20 @@ def run_sync():
             # Send data to your Web3 Django Backend
             try:
                 print("Anchoring to Sepolia Blockchain...")
-                response = requests.post(API_URL, json=payload)
+                headers = {"X-API-KEY": MINT_API_KEY} if MINT_API_KEY else {}
+                response = requests.post(API_URL, json=payload, headers=headers)
                 response_data = response.json()
                 
                 if response.status_code == 201:
-                    new_hash = response_data['transaction_hash']
-                    print(f"Success! Hash: {new_hash}")
+                    new_tx_hash = response_data.get('transaction_hash')
+                    doc_hash = response_data.get('document_hash') # Grabbing the document hash!
+                    
+                    print(f"Success! Transaction Hash: {new_tx_hash}")
+                    print(f"COPY THIS Document Hash for postman: {doc_hash}")
                     
                     # Update the Google Sheet with the new hash in Column D
                     sheet.update_cell(1, 4, "Transaction Hash") # Ensure header exists
-                    sheet.update_cell(row_number, 4, new_hash)
+                    sheet.update_cell(row_number, 4, new_tx_hash)
                     print(f"Google Sheet updated for {name}.")
                 else:
                     print(f"API Error for {name}: {response_data}")
@@ -58,7 +67,7 @@ def run_sync():
             except Exception as e:
                 print(f"Failed to connect to Django API: {e}")
                 
+       
         row_number += 1
-
 if __name__ == "__main__":
     run_sync()
